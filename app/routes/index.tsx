@@ -1,100 +1,117 @@
-import type { MetaFunction, LoaderFunction } from "remix";
-import { useLoaderData, json, Link } from "remix";
+import { useState } from "react";
+import algoliasearch from "algoliasearch/lite";
+import {
+  InstantSearch,
+  Hits,
+  SearchBox,
+  RefinementList,
+  Pagination,
+  Highlight,
+  InstantSearchProps,
+} from "react-instantsearch-dom";
+import { findResultsState } from "react-instantsearch-dom/server";
+import {
+  LinksFunction,
+  LoaderFunction,
+  useLoaderData,
+  useLocation,
+} from "remix";
+import * as qs from "qs";
 
-type IndexData = {
-  resources: Array<{ name: string; url: string }>;
-  demos: Array<{ name: string; to: string }>;
+import searchStylesUrl from "~/styles/search.css";
+import instantSearchStylesUrl from "instantsearch.css/themes/satellite-min.css";
+
+const searchClient = algoliasearch(
+  "latency",
+  "6be0576ff61c053d5f9a3225e2a90f76"
+);
+const indexName = "instant_search";
+
+export let links: LinksFunction = () => {
+  return [
+    { rel: "stylesheet", href: instantSearchStylesUrl },
+    { rel: "stylesheet", href: searchStylesUrl },
+  ];
 };
 
-// Loaders provide data to components and are only ever called on the server, so
-// you can connect to a database or run any server side code you want right next
-// to the component that renders it.
-// https://remix.run/api/conventions#loader
-export let loader: LoaderFunction = () => {
-  let data: IndexData = {
-    resources: [
-      {
-        name: "Remix Docs",
-        url: "https://remix.run/docs"
-      },
-      {
-        name: "React Router Docs",
-        url: "https://reactrouter.com/docs"
-      },
-      {
-        name: "Remix Discord",
-        url: "https://discord.gg/VBePs6d"
-      }
-    ],
-    demos: [
-      {
-        to: "demos/actions",
-        name: "Actions"
-      },
-      {
-        to: "demos/about",
-        name: "Nested Routes, CSS loading/unloading"
-      },
-      {
-        to: "demos/params",
-        name: "URL Params and Error Boundaries"
-      }
-    ]
-  };
-
-  // https://remix.run/api/remix#json
-  return json(data);
+export let loader: LoaderFunction = ({ request }) => {
+  return findResultsState(SearchContent, {
+    searchClient,
+    indexName,
+    url: request.url,
+  });
 };
 
-// https://remix.run/api/conventions#meta
-export let meta: MetaFunction = () => {
-  return {
-    title: "Remix Starter",
-    description: "Welcome to remix!"
-  };
+export default function Search() {
+  const resultsState = useLoaderData<InstantSearchProps["resultsState"]>();
+  return <SearchContent resultsState={resultsState} />;
+}
+
+const parser = {
+  parse(url: string): object {
+    const urlObj = new URL(url, "https://example.com");
+    return qs.parse(urlObj.search, {
+      ignoreQueryPrefix: true,
+      arrayLimit: 100,
+    });
+  },
+  stringify(object: object): string {
+    return `?${qs.stringify(object, {})}`;
+  },
 };
 
-// https://remix.run/guides/routing#index-routes
-export default function Index() {
-  let data = useLoaderData<IndexData>();
+function SearchContent(
+  props: Pick<InstantSearchProps, "widgetsCollector" | "resultsState"> & {
+    url?: string;
+  }
+) {
+  let url = props.url ?? useLocation().search;
+
+  const [searchState, setSearchState] = useState(parser.parse(url));
 
   return (
-    <div className="remix__page">
-      <main>
-        <h2>Welcome to Remix!</h2>
-        <p>We're stoked that you're here. 🥳</p>
-        <p>
-          Feel free to take a look around the code to see how Remix does things,
-          it might be a bit different than what you’re used to. When you're
-          ready to dive deeper, we've got plenty of resources to get you
-          up-and-running quickly.
-        </p>
-        <p>
-          Check out all the demos in this starter, and then just delete the{" "}
-          <code>app/routes/demos</code> and <code>app/styles/demos</code>{" "}
-          folders when you're ready to turn this into your next project.
-        </p>
-      </main>
-      <aside>
-        <h2>Demos In This App</h2>
-        <ul>
-          {data.demos.map(demo => (
-            <li key={demo.to} className="remix__page__resource">
-              <Link to={demo.to} prefetch="intent">
-                {demo.name}
-              </Link>
-            </li>
-          ))}
-        </ul>
-        <h2>Resources</h2>
-        <ul>
-          {data.resources.map(resource => (
-            <li key={resource.url} className="remix__page__resource">
-              <a href={resource.url}>{resource.name}</a>
-            </li>
-          ))}
-        </ul>
-      </aside>
-    </div>
+    <InstantSearch
+      searchClient={searchClient}
+      indexName={indexName}
+      searchState={searchState}
+      onSearchStateChange={(searchState) => {
+        setSearchState(searchState);
+        history.pushState(searchState, "", parser.stringify(searchState));
+      }}
+      {...props}
+    >
+      <div className="search-panel">
+        <div className="search-panel__filters">
+          <RefinementList attribute="brand" />
+        </div>
+
+        <div className="search-panel__results">
+          <SearchBox
+            className="searchbox"
+            translations={{
+              placeholder: "",
+            }}
+          />
+          <Hits hitComponent={Hit} />
+
+          <div className="pagination">
+            <Pagination />
+          </div>
+        </div>
+      </div>
+    </InstantSearch>
+  );
+}
+
+function Hit(props: { hit: any }) {
+  return (
+    <article>
+      <h1>
+        <Highlight attribute="name" hit={props.hit} />
+      </h1>
+      <p>
+        <Highlight attribute="description" hit={props.hit} />
+      </p>
+    </article>
   );
 }

@@ -1,0 +1,29 @@
+.search-panel {
+  display: flex;
+  margin-top: 1em;
+}
+
+.search-panel__filters {
+  flex: 1;
+}
+
+.search-panel__results {
+  flex: 3;
+}
+
+.searchbox {
+  margin-bottom: 2rem;
+}
+
+.pagination {
+  margin: 2rem auto;
+  text-align: center;
+}
+
+.ais-Hits-item, .ais-InfiniteHits-item, .ais-SearchBox-form {
+  background-color: unset !important;
+}
+
+.ais-SearchBox-form {
+  height: unset !important
+}
