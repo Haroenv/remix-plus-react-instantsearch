@@ -2,6 +2,8 @@
 
 - [Remix Docs](https://remix.run/docs)
 
+> ⚠️ at the moment the "events" package used by algoliasearch-helper is not supported by Remix, so a fork was used that makes that code internal (see [the source](https://github.com/algolia/algoliasearch-helper-js/tree/43cd9361bee28f6fdf6ec2304451ccd8145becc7))
+
 ## Development
 
 From your terminal:
