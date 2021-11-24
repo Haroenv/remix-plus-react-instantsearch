@@ -44,7 +44,8 @@ export let loader: LoaderFunction = ({ request }) => {
 
 export default function Search() {
   const resultsState = useLoaderData<InstantSearchProps["resultsState"]>();
-  return <SearchContent resultsState={resultsState} />;
+  const url = useLocation().search;
+  return <SearchContent resultsState={resultsState} url={url} />;
 }
 
 const parser = {
@@ -56,18 +57,16 @@ const parser = {
     });
   },
   stringify(object: object): string {
-    return `?${qs.stringify(object, {})}`;
+    return qs.stringify(object, { addQueryPrefix: true });
   },
 };
 
 function SearchContent(
   props: Pick<InstantSearchProps, "widgetsCollector" | "resultsState"> & {
-    url?: string;
+    url: string;
   }
 ) {
-  let url = props.url ?? useLocation().search;
-
-  const [searchState, setSearchState] = useState(parser.parse(url));
+  const [searchState, setSearchState] = useState(parser.parse(props.url));
 
   return (
     <InstantSearch
